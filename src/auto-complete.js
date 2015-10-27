@@ -81,12 +81,12 @@ tagsInput.directive('autoComplete', function($document, $timeout, $sce, $q, tags
                 items = getDifference(items, tags);
                 self.items = items.slice(0, options.maxResultsToShow);
 
-                if (self.items.length > 0) {
+                //if (self.items.length > 0) {
                     self.show();
-                }
-                else {
-                    self.reset();
-                }
+                //}
+                //else {
+                //    self.reset();
+                //}
             });
         }, options.debounceDelay);
 
