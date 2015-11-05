@@ -38,12 +38,28 @@ tagsInput.factory('tiUtil', function($timeout) {
         var item = null;
         comparer = comparer || self.defaultComparer;
 
-        array.some(function(element) {
-            if (comparer(element[key], obj[key])) {
-                item = element;
-                return true;
-            }
-        });
+        //array.some(function(element) {
+        //    if (comparer(element[key], obj[key])) {
+        //        item = element;
+        //        return true;
+        //    }
+        //});
+
+        if (obj.id) {
+            array.some(function(element) {
+                if (comparer(element[key], obj[key])) {
+                    item = element;
+                    return true;
+                }
+            });
+        } else {
+            array.some(function(element) {
+                if (comparer(element['name'], obj['name'])) {
+                    item = element;
+                    return true;
+                }
+            });
+        }
 
         return item;
     };
