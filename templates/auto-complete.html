@@ -9,7 +9,7 @@
       <ti-autocomplete-match data="::item"></ti-autocomplete-match>
     </li>
     <div class="suggestion-item no-matchs" ng-show="suggestionList.items.length === 0">
-        No matchs found, enter Email address to invite new members
+        {{noMatchText}}
     </div>
     <div ng-show="suggestionList.items.length === 1 && suggestionList.items[0].isExisted">
         User already in this project

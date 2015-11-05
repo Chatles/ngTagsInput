@@ -147,10 +147,13 @@ tagsInput.directive('autoComplete', function($document, $timeout, $sce, $q, tags
                 loadOnEmpty: [Boolean, false],
                 loadOnFocus: [Boolean, false],
                 selectFirstMatch: [Boolean, true],
-                displayProperty: [String, '']
+                displayProperty: [String, ''],
+                noMatchText: [String, 'No matchs found.']
             });
 
             $scope.suggestionList = new SuggestionList($scope.source, $scope.options, $scope.events);
+
+            $scope.noMatchText = $scope.options.noMatchText;
 
             this.registerAutocompleteMatch = function() {
                 return {
