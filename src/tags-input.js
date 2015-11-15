@@ -269,7 +269,12 @@ tagsInput.directive('tagsInput', function($timeout, $document, $window, tagsInpu
             };
 
             scope.track = function(tag) {
-                return tag[options.keyProperty || options.displayProperty];
+                //return tag[options.keyProperty || options.displayProperty];
+                if(tag[options.keyProperty] == null) {
+                    return tag[options.displayProperty];
+                } else {
+                    return tag[options.keyProperty];
+                }
             };
 
             scope.$watch('tags', function(value) {
