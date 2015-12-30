@@ -29,7 +29,13 @@
  *    the suggestion list is shown.
  */
 tagsInput.directive('autoComplete', function($document, $timeout, $sce, $q, tagsInputConfig, tiUtil) {
-    function SuggestionList(loadFn, options, events) {
+
+
+    function SuggestionList(loadFn, options, events, attrs, isMultiType) {
+
+        if(attrs.multiType) {
+            attrs.multiType = attrs.multiType.split(',');
+        }
         var self = {}, getDifference, lastPromise, getTagId;
 
         getTagId = function() {
@@ -48,6 +54,15 @@ tagsInput.directive('autoComplete', function($document, $timeout, $sce, $q, tags
             });
         };
 
+        var getMultiTypeDifference = function(json, tags) {
+            var i, type;
+            for(i in attrs.multiType) {
+                type = attrs.multiType[i];
+                json[type] = getDifference(json[type], tags);
+            }
+            return json;
+        };
+
         self.reset = function() {
             lastPromise = null;
 
@@ -60,13 +75,13 @@ tagsInput.directive('autoComplete', function($document, $timeout, $sce, $q, tags
         self.show = function() {
             if (options.selectFirstMatch) {
                 self.select(0);
-            }
-            else {
+            } else {
                 self.selected = null;
             }
             self.visible = true;
         };
         self.load = tiUtil.debounce(function(query, tags) {
+            var i, type;
             self.query = query;
 
             var promise = $q.when(loadFn({ $query: query }));
@@ -77,16 +92,36 @@ tagsInput.directive('autoComplete', function($document, $timeout, $sce, $q, tags
                     return;
                 }
 
-                items = tiUtil.makeObjectArray(items.data || items, getTagId());
-                items = getDifference(items, tags);
-                self.items = items.slice(0, options.maxResultsToShow);
-
-                //if (self.items.length > 0) {
-                    self.show();
-                //}
-                //else {
-                //    self.reset();
-                //}
+                if(isMultiType) {
+                    /*items = {
+                    *   userList: [u1,u2]
+                    *   companyList: [c1,c2]
+                    *   roleList: [r1, r2]
+                    * }
+                    * */
+                    items = getMultiTypeDifference(items, tags);
+                    console.log('items=',items);
+                    self.items = items;
+                    self.items.alllist = [];
+                    for(i in attrs.multiType) {
+                        type = attrs.multiType[i];
+                        self.items.alllist = self.items.alllist.concat(self.items[type]);
+                    }
+                    if(self.items.alllist.length > 0) {
+                        self.show();
+                    } else {
+                        self.reset();
+                    }
+                } else {
+                    //items = tiUtil.makeObjectArray(items.data || items, getTagId());
+                    items = getDifference(items, tags);
+                    self.items = items.slice(0, options.maxResultsToShow);
+                    if(self.items.length > 0) {
+                        self.show();
+                    } else {
+                        self.reset();
+                    }
+                }
             });
         }, options.debounceDelay);
 
@@ -96,15 +131,26 @@ tagsInput.directive('autoComplete', function($document, $timeout, $sce, $q, tags
         self.selectPrior = function() {
             self.select(--self.index);
         };
+
         self.select = function(index) {
-            if (index < 0) {
-                index = self.items.length - 1;
-            }
-            else if (index >= self.items.length) {
-                index = 0;
+            if(isMultiType) {
+                if (index < 0) {
+                    index = self.items.alllist.length - 1;
+                }
+                else if (index >= self.items.alllist.length) {
+                    index = 0;
+                }
+                self.selected = self.items.alllist[index];
+            } else {
+                if (index < 0) {
+                    index = self.items.length - 1;
+                }
+                else if (index >= self.items.length) {
+                    index = 0;
+                }
+                self.selected = self.items[index];
             }
             self.index = index;
-            self.selected = self.items[index];
             events.trigger('suggestion-selected', index);
         };
 
@@ -113,13 +159,18 @@ tagsInput.directive('autoComplete', function($document, $timeout, $sce, $q, tags
         return self;
     }
 
-    function scrollToElement(root, index) {
+    function scrollToElement(root, index, isMultiType) {
         var element = root.find('li').eq(index),
-            parent = element.parent(),
-            elementTop = element.prop('offsetTop'),
-            elementHeight = element.prop('offsetHeight'),
-            parentHeight = parent.prop('clientHeight'),
-            parentScrollTop = parent.prop('scrollTop');
+            parent;
+        if(isMultiType) {
+            parent = element.parent().parent();
+        } else {
+            parent = element.parent();
+        }
+        var elementTop = element.prop('offsetTop'),
+        elementHeight = element.prop('offsetHeight'),
+        parentHeight = parent.prop('clientHeight'),
+        parentScrollTop = parent.prop('scrollTop');
 
         if (elementTop < parentScrollTop) {
             parent.prop('scrollTop', elementTop);
@@ -133,7 +184,9 @@ tagsInput.directive('autoComplete', function($document, $timeout, $sce, $q, tags
         restrict: 'E',
         require: '^tagsInput',
         scope: { source: '&' },
-        templateUrl: 'ngTagsInput/auto-complete.html',
+        templateUrl: function(element, attrs) {
+            return attrs.autoCompleteTemplateUrl || 'ngTagsInput/auto-complete.html';
+        },
         controller: function($scope, $element, $attrs) {
             $scope.events = tiUtil.simplePubSub();
 
@@ -151,7 +204,10 @@ tagsInput.directive('autoComplete', function($document, $timeout, $sce, $q, tags
                 noMatchText: [String, 'No matchs found.']
             });
 
-            $scope.suggestionList = new SuggestionList($scope.source, $scope.options, $scope.events);
+            $scope.isMultiType = !!$attrs.multiType;
+
+
+            $scope.suggestionList = new SuggestionList($scope.source, $scope.options, $scope.events, $attrs, $scope.isMultiType);
 
             $scope.noMatchText = $scope.options.noMatchText;
 
@@ -260,8 +316,8 @@ tagsInput.directive('autoComplete', function($document, $timeout, $sce, $q, tags
                     }
                 });
 
-            events.on('suggestion-selected', function(index) {
-                scrollToElement(element, index);
+            events.on('suggestion-selected', function(index, type) {
+                scrollToElement(element, index, scope.isMultiType);
             });
         }
     };
