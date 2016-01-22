@@ -55,8 +55,8 @@ tagsInput.directive('autoComplete', function($document, $timeout, $sce, $q, tags
         };
 
         var getMultiTypeDifference = function(json, tags) {
-            var i, type;
-            for(i in attrs.multiType) {
+            var i, type, length = attrs.multiType.length;
+            for(i = 0; i < length; i++) {
                 type = attrs.multiType[i];
                 json[type] = getDifference(json[type], tags);
             }
