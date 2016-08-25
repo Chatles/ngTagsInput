@@ -47,7 +47,7 @@
  *    available as $tag.
  * @param {expression=} [onTagClicked=NA] Expression to evaluate upon clicking an existing tag. The clicked tag is available as $tag.
  */
-tagsInput.directive('tagsInput', function($timeout, $document, $window, tagsInputConfig, tiUtil) {
+tagsInput.directive('tagsInput', function($timeout, $document, $window, tagsInputConfig, tiUtil, $q) {
     function TagList(options, events, onTagAdding, onTagRemoving) {
         var self = {}, getTagText, setTagText, tagIsValid;
 
@@ -66,7 +66,6 @@ tagsInput.directive('tagsInput', function($timeout, $document, $window, tagsInpu
                    tagText.length >= options.minLength &&
                    tagText.length <= options.maxLength &&
                    options.allowedTagsPattern.test(tagText) &&
-                   !tiUtil.findInObjectArray(self.items, tag, options.keyProperty || options.displayProperty) &&
                    onTagAdding({ $tag: tag });
         };
 
@@ -87,15 +86,18 @@ tagsInput.directive('tagsInput', function($timeout, $document, $window, tagsInpu
 
             setTagText(tag, tagText);
 
-            if (tagIsValid(tag)) {
-                self.items.push(tag);
-                events.trigger('tag-added', { $tag: tag });
-            }
-            else if (tagText) {
-                events.trigger('invalid-tag', { $tag: tag });
-            }
+            return $q.when(tagIsValid(tag)).then(function(isValid) {
+                var isDuplicatedTag = tiUtil.findInObjectArray(self.items, tag, options.keyProperty || options.displayProperty);
+                if (isValid && !isDuplicatedTag) {
+                    self.items.push(tag);
+                    events.trigger('tag-added', { $tag: tag });
+                }
+                else if (tagText) {
+                    events.trigger('invalid-tag', { $tag: tag, $invalidType: isDuplicatedTag?'duplicated':'' });
+                }
+                return tag;
+            });
 
-            return tag;
         };
 
         self.remove = function(index) {
@@ -203,6 +205,9 @@ tagsInput.directive('tagsInput', function($timeout, $document, $window, tagsInpu
                     addTag: function(tag) {
                         return $scope.tagList.add(tag);
                     },
+                    newTag: function() {
+                        return $scope.tagList.addText($scope.newTag.text());
+                    },
                     focusInput: function() {
                         input[0].focus();
                     },
@@ -219,6 +224,10 @@ tagsInput.directive('tagsInput', function($timeout, $document, $window, tagsInpu
                         $scope.events.on(name, handler);
                         return this;
                     }
+                    //,
+                    //setDisabled: function(isDisabled) {
+                    //    $scope.disabled = isDisabled;
+                    //}
                 };
             };
 
@@ -403,10 +412,7 @@ tagsInput.directive('tagsInput', function($timeout, $document, $window, tagsInpu
                     shouldEditLastTag = key === KEYS.backspace && scope.newTag.text().length === 0 && options.enableEditingLastTag;
                     shouldSelect = (key === KEYS.backspace || key === KEYS.left || key === KEYS.right) && scope.newTag.text().length === 0 && !options.enableEditingLastTag;
 
-                    if (shouldAdd) {
-                        tagList.addText(scope.newTag.text());
-                    }
-                    else if (shouldEditLastTag) {
+                    if (shouldEditLastTag) {
                         var tag;
 
                         tagList.selectPrior();

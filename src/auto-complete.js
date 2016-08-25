@@ -80,10 +80,14 @@ tagsInput.directive('autoComplete', function($document, $timeout, $sce, $q, tags
             }
             self.visible = true;
         };
-        self.load = tiUtil.debounce(function(query, tags) {
+        self.load = tiUtil.debounce(function() {
+            self.loading = true;
+        }, function(query, tags) {
+
+            self.reset();
+
             var i, type;
             self.query = query;
-
             var promise = $q.when(loadFn({ $query: query }));
             lastPromise = promise;
 
@@ -100,17 +104,14 @@ tagsInput.directive('autoComplete', function($document, $timeout, $sce, $q, tags
                     * }
                     * */
                     items = getMultiTypeDifference(items, tags);
-                    console.log('items=',items);
                     self.items = items;
                     self.items.alllist = [];
-                    for(i in attrs.multiType) {
+                    for(var i = 0; i < attrs.multiType.length; i++) {
                         type = attrs.multiType[i];
                         self.items.alllist = self.items.alllist.concat(self.items[type]);
                     }
                     if(self.items.alllist.length > 0) {
                         self.show();
-                    } else {
-                        self.reset();
                     }
                 } else {
                     //items = tiUtil.makeObjectArray(items.data || items, getTagId());
@@ -118,11 +119,14 @@ tagsInput.directive('autoComplete', function($document, $timeout, $sce, $q, tags
                     self.items = items.slice(0, options.maxResultsToShow);
                     if(self.items.length > 0) {
                         self.show();
-                    } else {
-                        self.reset();
                     }
                 }
             });
+
+            promise.finally(function() {
+                self.loading = false;
+            });
+
         }, options.debounceDelay);
 
         self.selectNext = function() {
@@ -243,20 +247,33 @@ tagsInput.directive('autoComplete', function($document, $timeout, $sce, $q, tags
 
             scope.addSuggestion = function() {
                 var added = false;
-
-                if (suggestionList.selected) {
-                    tagsInput.addTag(angular.copy(suggestionList.selected));
+                var promise;
+                if (!scope.isAdding) {
+                    scope.isAdding = true;
+                    //tagsInput.setDisabled(true);
+                    if(!suggestionList.selected) {
+                        promise = tagsInput.newTag();
+                    } else {
+                        promise = tagsInput.addTag(angular.copy(suggestionList.selected));
+                    }
+                    promise.finally(function() {
+                        scope.isAdding = false;
+                        //tagsInput.setDisabled(false);
+                    });
                     suggestionList.reset();
                     tagsInput.focusInput();
 
                     added = true;
                 }
+
                 return added;
             };
 
             scope.track = function(item) {
                 return item[options.tagsInput.keyProperty || options.tagsInput.displayProperty];
             };
+
+            scope.getCurrentTagText = tagsInput.getCurrentTagText;
 
             tagsInput
                 .on('tag-added tag-removed invalid-tag input-blur', function() {
@@ -298,15 +315,16 @@ tagsInput.directive('autoComplete', function($document, $timeout, $sce, $q, tags
                             suggestionList.reset();
                             handled = true;
                         }
-                        else if (key === KEYS.enter || key === KEYS.tab) {
-                            handled = scope.addSuggestion();
-                        }
                     }
                     else {
                         if (key === KEYS.down && scope.options.loadOnDownArrow) {
                             suggestionList.load(tagsInput.getCurrentTagText(), tagsInput.getTags());
                             handled = true;
                         }
+                    }
+
+                    if (key === KEYS.enter || key === KEYS.tab) {
+                        handled = scope.addSuggestion();
                     }
 
                     if (handled) {

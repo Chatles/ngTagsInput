@@ -11,12 +11,13 @@
 tagsInput.factory('tiUtil', function($timeout) {
     var self = {};
 
-    self.debounce = function(fn, delay) {
+    self.debounce = function(fn, fnDebounce, delay) {
         var timeoutId;
         return function() {
+            fn();
             var args = arguments;
             $timeout.cancel(timeoutId);
-            timeoutId = $timeout(function() { fn.apply(null, args); }, delay);
+            timeoutId = $timeout(function() { fnDebounce.apply(null, args); }, delay);
         };
     };
 
@@ -38,21 +39,12 @@ tagsInput.factory('tiUtil', function($timeout) {
         var item = null;
         comparer = comparer || self.defaultComparer;
 
-        if (obj.id) {
-            array.some(function(element) {
-                if (comparer(element[key], obj[key])) {
-                    item = element;
-                    return true;
-                }
-            });
-        } else {
-            array.some(function(element) {
-                if (comparer(element['name'], obj['name'])) {
-                    item = element;
-                    return true;
-                }
-            });
-        }
+        array.some(function(element) {
+            if (comparer(element[key], obj[key])) {
+                item = element;
+                return true;
+            }
+        });
 
         return item;
     };
