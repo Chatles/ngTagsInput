@@ -1,7 +1,6 @@
 <div class="autocomplete" ng-if="suggestionList.visible">
   <ul class="suggestion-list">
     <li class="suggestion-item"
-        ng-hide="suggestionList.items.length === 1 && suggestionList.items[0].isExisted"
         ng-repeat="item in suggestionList.items track by track(item)"
         ng-class="{selected: item == suggestionList.selected}"
         ng-click="addSuggestionByIndex($index)"
@@ -10,9 +9,6 @@
     </li>
     <div class="suggestion-item no-matchs" ng-show="suggestionList.items.length === 0">
         {{noMatchText}}
-    </div>
-    <div ng-show="suggestionList.items.length === 1 && suggestionList.items[0].isExisted">
-        User already in this project
     </div>
   </ul>
 </div>
